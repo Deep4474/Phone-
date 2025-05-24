@@ -133,6 +133,98 @@
                                 font-size: 16px;
                                 margin-top: 10px;
                             }
+                            /* i want the style to look go on mobile */
+                        button:hover {
+                                background-color: #218838;
+                            }
+                        .cart {
+                            background-color: #fff;
+                            border-radius: 5px;
+                            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                            padding: 20px;
+                            margin-top: 20px;
+                        }
+                        .cart h2 {
+                            margin-top: 0;
+                        }
+                        .cart ul {
+                            list-style-type: none;
+                            padding: 0;
+                        }
+                        .cart ul li {
+                            margin-bottom: 10px;
+                        }
+                        .cart button {
+                            background-color: #007bff;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            text-align: center;
+                            text-decoration: none;
+                            display: inline-block;
+                            font-size: 16px;
+                            margin-top: 10px;
+                        }
+                        .cart button:hover {
+                            background-color: #0056b3;
+                        }
+                        .laptop-list h2 {
+                            text-align: center;
+                            margin-top: 20px;
+                        }
+                        .laptop-list {
+                            display: flex;
+                            flex-wrap: wrap;
+                            justify-content: space-around;
+                            padding: 20px;
+                        }
+                        .laptop {
+                            background-color: white;
+                            border-radius: 5px;
+                            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                            margin-bottom: 20px;
+                            padding: 10px;
+                            text-align: center;
+                        }
+                        .laptop img {
+                            max-width: 100%;
+                            height: auto;
+                        }
+                        .laptop h3 {
+                            margin: 10px 0;
+                        }
+                        .laptop button {
+                            background-color: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            text-align: center;
+                            text-decoration: none;
+                            display: inline-block;
+                            font-size: 16px;
+                            margin-top: 10px;
+                        }
+                        .laptop button:hover {
+                            background-color: #218838;
+                        }
+                        @media (max-width: 600px) {
+                            header {
+                                text-align: center;
+                            }
+                            .phone-gadget, .laptop-list {
+                                flex-direction: column;
+                                align-items: center;
+                            }
+                            .gadget, .laptop {
+                                width: 90%;
+                                margin: 10px 0;
+                            }
+                            button {
+                                width: 100%;
+                                padding: 15px;
+                            }
+                        }
+                        
                    </style>
                 </section>
                 <section class="laptop-list">
@@ -186,17 +278,33 @@
                             max-width: 100%;
                             height: auto;
                         }
+                        /*mobile phone style  that will make it show nice on phone if i use phone */
+                        @media (max-width: 600px) {
+                            .laptop-list {
+                                flex-direction: column;
+                                align-items: center;
+                            }
+                            .laptop {
+                                width: 90%;
+                                margin: 10px 0;
+                            }
+                            .laptop button {
+                                width: 100%;
+                                padding: 15px;
+                            }
+                        }
                     </style>
 
                 </section>
                 <section class="cart">
                     <h2>Your Cart</h2>
                     <ul id="cart-items">
-                        <!-- Cart itescript>
-            let cart = [];
-
-            function buyNow(itemName, itemPrice) {
-               ms will be displayed here -->
+                        <!-- Cart items will be displayed here -->
+                    </ul>
+                    <button onclick="checkout()">Checkout</button>
+                    <button onclick="clearCart()">Clear Cart</button>
+                </section>
+               <!-- Cart items will be displayed here -->
                     </ul>
                     <button onclick="checkout()">Checkout</button>
                     <button onclick="clearCart()">Clear Cart</button>
@@ -600,9 +708,11 @@
                 phoneGadget.style.display = phoneGadget.style.display === 'none' ? 'block' : 'none';
             }
 
+
             
             
         </script>
+        
         <address>
             <p>Contact us at: 
                 <a href="tel:+2349138154963">+234 913 815 4963</a></p>
