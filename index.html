@@ -278,7 +278,7 @@
                             max-width: 100%;
                             height: auto;
                         }
-                        /*mobile phone style  that will make it show nice on phone if i use phone */
+                        /*mobile phone style that will make all the main contect to they beside each other and it will fine*/
                         @media (max-width: 600px) {
                             .laptop-list {
                                 flex-direction: column;
@@ -293,6 +293,69 @@
                                 padding: 15px;
                             }
                         }
+                        .phone-list {
+                            display: flex;
+                            flex-wrap: wrap;
+                            justify-content: space-around;
+                            padding: 20px;
+                        }
+                        .phone {
+                            background-color: white;
+                            border-radius: 5px;
+                            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                            margin-bottom: 20px;
+                            padding: 10px;
+                            text-align: center;
+                        }
+                        .phone img {
+                            max-width: 100%;
+                            height: auto;
+                        }
+                        .phone h3 {
+                            margin: 10px 0;
+                        }
+                        .phone button {
+                            background-color: #28a745;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            text-align: center;
+                            text-decoration: none;
+                            display: inline-block;
+                            font-size: 16px;
+                            margin-top: 10px;
+                        }
+                        .phone button:hover {
+                            background-color: #218838;
+                        }
+                        @media (max-width: 600px) {
+                            .phone-list {
+                                flex-direction: column;
+                                align-items: center;
+                            }
+                            .phone {
+                                width: 90%;
+                                margin: 10px 0;
+                            }
+                            .phone button {
+                                width: 100%;
+                                padding: 15px;
+                            }
+                        }
+                    .header {
+                        background-color: #333;
+                        color: white;
+                        padding: 10px 0;
+                        text-align: center;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 2em;
+                    }
+                    .header span {
+                        font-size: 1.5em;
+                        font-weight: bold;
+                    }
                     </style>
 
                 </section>
