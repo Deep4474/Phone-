@@ -158,8 +158,8 @@ let orders = [];
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, // Set in Vercel dashboard
-    pass: process.env.EMAIL_PASS  // Set in Vercel dashboard
+    user: process.env.EMAIL_USER, // Set in Render dashboard
+    pass: process.env.EMAIL_PASS  // Set in Render dashboard
   }
 });
 
