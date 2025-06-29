@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -12,11 +13,31 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://images.unsplash.com",
+          "https://*.unsplash.com"
+        ],
+        connectSrc: ["'self'", "http://localhost:3002"],
+        fontSrc: ["'self'", "https:", "data:"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+  })
+);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -37,14 +58,17 @@ app.use(cors({
       'http://localhost:5500', 
       'http://127.0.0.1:5500', 
       'http://localhost:5501', 
-      'http://127.0.0.1:5501'
+      'http://127.0.0.1:5501',
+      'http://localhost:3002', 
+      'http://127.0.0.1:3002',
+      'https://ol43435.github.io' // GitHub Pages frontend
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
-      callback(null, true); // Allow all origins for development
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
@@ -54,21 +78,6 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
-// Additional CORS headers for all responses
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -76,6 +85,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
 // In-memory data storage
+// NOTE: In production, use a real database (e.g., MongoDB, PostgreSQL) instead of in-memory arrays.
 let users = [];
 let adminUsers = [
   {
@@ -154,8 +164,8 @@ let orders = [];
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'ayomideoluniyi49@gmail.com', // Replace with your Gmail address
-    pass: 'sdrw yalf tsys jlmy' // Replace with your Gmail app password
+    user: process.env.EMAIL_USER, // Set in Vercel dashboard
+    pass: process.env.EMAIL_PASS  // Set in Vercel dashboard
   }
 });
 
