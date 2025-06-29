@@ -23,6 +23,7 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com", "https://maps.gstatic.com"],
+        "script-src-attr": ["'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https:", "https://fonts.googleapis.com"],
         imgSrc: [
           "'self'",
