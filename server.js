@@ -84,18 +84,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Serve uploaded images
 app.use('/uploads', express.static('uploads'));
 
+// Load admin users from admins.json
+const adminUsers = require('./admins.json');
+
 // In-memory data storage
 // NOTE: In production, use a real database (e.g., MongoDB, PostgreSQL) instead of in-memory arrays.
 let users = [];
-let adminUsers = [
-  {
-    id: 'admin',
-    name: 'Admin',
-    email: 'your-real-email@gmail.com',
-    password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // admin123
-    createdAt: new Date().toISOString()
-  }
-];
 let products = [
   {
     id: "1",
