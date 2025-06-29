@@ -142,7 +142,6 @@
             id="map-search" 
             placeholder="Search for address, area, or landmark..." 
             class="map-search-input"
-            onkeypress="if(event.key === 'Enter') searchLocation()"
           />
           <button onclick="searchLocation()" class="map-search-btn">Search</button>
         </div>
@@ -173,19 +172,19 @@
           <h4>Update Delivery Address (Optional)</h4>
           <div class="form-group">
             <label for="delivery-state">State:</label>
-            <input type="text" id="delivery-state" placeholder="State" onchange="updateDeliveryAddress()" />
+            <input type="text" id="delivery-state" placeholder="State" />
           </div>
           <div class="form-group">
             <label for="delivery-area">Area:</label>
-            <input type="text" id="delivery-area" placeholder="Area" onchange="updateDeliveryAddress()" />
+            <input type="text" id="delivery-area" placeholder="Area" />
           </div>
           <div class="form-group">
             <label for="delivery-street">Street:</label>
-            <input type="text" id="delivery-street" placeholder="Street" onchange="updateDeliveryAddress()" />
+            <input type="text" id="delivery-street" placeholder="Street" />
           </div>
           <div class="form-group">
             <label for="delivery-address">Full Address:</label>
-            <textarea id="delivery-address" placeholder="Full Address" rows="3" onchange="updateDeliveryAddress()"></textarea>
+            <textarea id="delivery-address" placeholder="Full Address" rows="3"></textarea>
           </div>
           <button onclick="useCurrentLocation()" class="btn-secondary" style="margin-bottom: 10px;">Use Current Location</button>
           <button onclick="useRegisteredAddress()" class="btn-secondary">Use Registered Address</button>

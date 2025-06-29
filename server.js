@@ -27,10 +27,9 @@ app.use(
         imgSrc: [
           "'self'",
           "data:",
-          "https://images.unsplash.com",
-          "https://*.unsplash.com"
+          "https:"
         ],
-        connectSrc: ["'self'", "http://localhost:3002"],
+        connectSrc: ["'self'", "http://localhost:3002", "https://phone-2cv4.onrender.com"],
         fontSrc: ["'self'", "https:", "data:"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
