@@ -22,15 +22,18 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://maps.googleapis.com", "https://maps.gstatic.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https:", "https://fonts.googleapis.com"],
         imgSrc: [
           "'self'",
           "data:",
-          "https:"
+          "https:",
+          "https://maps.googleapis.com",
+          "https://maps.gstatic.com"
         ],
-        connectSrc: ["'self'", "http://localhost:3002", "https://phone-2cv4.onrender.com"],
-        fontSrc: ["'self'", "https:", "data:"],
+        connectSrc: ["'self'", "http://localhost:3002", "https://phone-2cv4.onrender.com", "https://maps.googleapis.com"],
+        fontSrc: ["'self'", "https:", "data:", "https://fonts.gstatic.com"],
+        frameSrc: ["'self'", "https://www.google.com", "https://maps.googleapis.com"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
       },
