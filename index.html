@@ -206,11 +206,31 @@
         <p><strong>Total:</strong> <span id="total-price">₦0</span></p>
       </div>
 
-      <button id="place-order-btn" class="btn-primary">Place Order</button>
+      <button id="place-order-btn" class="btn-primary">
+        <span id="place-order-btn-text">Place Order</span>
+        <span id="place-order-spinner" class="spinner hidden" style="margin-left:8px;"></span>
+      </button>
       <button id="back-to-products-btn-2" class="btn-secondary">Back to Products</button>
     </section>
   </main>
 
   <script src="script.js"></script>
+  <style>
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+    }
+    .hidden { display: none !important; }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </body>
 </html> 
