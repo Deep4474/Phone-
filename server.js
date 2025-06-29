@@ -60,7 +60,8 @@ app.use(cors({
       'http://127.0.0.1:5501',
       'http://localhost:3002', 
       'http://127.0.0.1:3002',
-      'https://ol43435.github.io' // GitHub Pages frontend
+      'https://ol43435.github.io', // GitHub Pages frontend
+      'https://phone-2cv4.onrender.com' // Added Render backend URL
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
