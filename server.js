@@ -506,6 +506,36 @@ app.post('/api/orders', authenticateToken, (req, res) => {
     };
     orders.push(newOrder);
     product.stock -= quantity;
+
+    // Notify all admins of new order
+    const adminEmails = adminUsers.map(a => a.email).filter(Boolean);
+    if (adminEmails.length > 0) {
+      const mailOptions = {
+        from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
+        to: adminEmails.join(','),
+        subject: `New Order Placed: #${newOrder.id}`,
+        html: `
+          <h2>New Order Placed</h2>
+          <p>Order ID: ${newOrder.id}</p>
+          <p>User: ${req.user ? req.user.name : 'Unknown'}</p>
+          <p>Product: ${product ? product.name : ''}</p>
+          <p>Quantity: ${newOrder.quantity}</p>
+          <p>Total: ${newOrder.totalPrice}</p>
+          <p>Delivery Option: ${newOrder.deliveryOption}</p>
+          <p>Payment Method: ${newOrder.paymentMethod}</p>
+          <p>Delivery Address: ${newOrder.deliveryAddress}</p>
+          <p>Date: ${newOrder.createdAt}</p>
+        `
+      };
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log('Admin new order email error:', error);
+        } else {
+          console.log('Admin new order email sent:', info.response);
+        }
+      });
+    }
+
     res.json({ success: true, message: 'Order placed successfully', orderId: newOrder.id });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error placing order', error: error.message });
@@ -567,6 +597,64 @@ app.put('/api/admin/orders/:id', authenticateAdmin, (req, res) => {
     }
     order.status = status;
     order.adminNotes = adminNotes || '';
+
+    // Find the user for this order
+    const user = users.find(u => u.id === order.userId);
+    // Find the product for this order
+    const product = products.find(p => p.id === order.productId);
+    const productName = product ? product.name : '';
+    if (user && user.email) {
+      // Send email notification
+      const mailOptions = {
+        from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
+        to: user.email,
+        subject: `Your Order #${order.id} Status Update`,
+        html: `
+          <h2>Order Update from ONGOD Gadget Shop</h2>
+          <p>Hi ${user.name},</p>
+          <p>Your order <strong>#${order.id}</strong> status has been updated to: <strong>${order.status.toUpperCase()}</strong>.</p>
+          <p>Product: ${productName}</p>
+          <p>Quantity: ${order.quantity}</p>
+          <p>Total: ${order.totalPrice}</p>
+          <p>Admin Notes: ${order.adminNotes || 'None'}</p>
+          <p>Thank you for shopping with us!</p>
+        `
+      };
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log('Order update email error:', error);
+        } else {
+          console.log('Order update email sent:', info.response);
+        }
+      });
+    }
+
+    // Notify all admins of order update
+    const adminEmails = adminUsers.map(a => a.email).filter(Boolean);
+    if (adminEmails.length > 0) {
+      const mailOptionsAdmin = {
+        from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
+        to: adminEmails.join(','),
+        subject: `Order #${order.id} Status Updated` ,
+        html: `
+          <h2>Order Status Updated</h2>
+          <p>Order ID: ${order.id}</p>
+          <p>User: ${user ? user.name : 'Unknown'}</p>
+          <p>Product: ${productName}</p>
+          <p>New Status: ${order.status.toUpperCase()}</p>
+          <p>Admin Notes: ${order.adminNotes || 'None'}</p>
+          <p>Date: ${new Date().toLocaleString()}</p>
+        `
+      };
+      transporter.sendMail(mailOptionsAdmin, (error, info) => {
+        if (error) {
+          console.log('Admin order update email error:', error);
+        } else {
+          console.log('Admin order update email sent:', info.response);
+        }
+      });
+    }
+
     res.json({ success: true, message: 'Order status updated successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error updating order', error: error.message });
