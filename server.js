@@ -11,10 +11,100 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const mongoose = require('mongoose');
+
+// Import MongoDB models
+const User = require('./models/User');
+const Product = require('./models/Product');
+const Order = require('./models/Order');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ongod-gadget-shop';
+
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('✅ Connected to MongoDB successfully');
+  console.log('📊 Database:', MONGODB_URI.includes('localhost') ? 'Local MongoDB' : 'MongoDB Atlas (Cloud)');
+})
+.catch((error) => {
+  console.error('❌ MongoDB connection error:', error);
+  console.log('⚠️  Falling back to in-memory storage...');
+});
+
+// Initialize default products if database is empty
+async function initializeDefaultProducts() {
+  try {
+    const productCount = await Product.countDocuments();
+    if (productCount === 0) {
+      console.log('📦 Initializing default products...');
+      const defaultProducts = [
+        {
+          name: "iPhone 15 Pro",
+          price: "₦1,200,000",
+          image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=300&h=200&fit=crop",
+          description: "Latest iPhone with advanced features",
+          category: "Smartphones",
+          stock: 15
+        },
+        {
+          name: "Samsung Galaxy S24",
+          price: "₦950,000",
+          image: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=300&h=200&fit=crop",
+          description: "Premium Android smartphone",
+          category: "Smartphones",
+          stock: 12
+        },
+        {
+          name: "MacBook Pro M3",
+          price: "₦2,500,000",
+          image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=200&fit=crop",
+          description: "Powerful laptop for professionals",
+          category: "Laptops",
+          stock: 8
+        },
+        {
+          name: "iPad Air",
+          price: "₦850,000",
+          image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=300&h=200&fit=crop",
+          description: "Versatile tablet for work and play",
+          category: "Tablets",
+          stock: 20
+        },
+        {
+          name: "AirPods Pro",
+          price: "₦350,000",
+          image: "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=300&h=200&fit=crop",
+          description: "Wireless earbuds with noise cancellation",
+          category: "Accessories",
+          stock: 30
+        },
+        {
+          name: "Apple Watch Series 9",
+          price: "₦450,000",
+          image: "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=300&h=200&fit=crop",
+          description: "Smartwatch with health monitoring",
+          category: "Wearables",
+          stock: 18
+        }
+      ];
+      
+      await Product.insertMany(defaultProducts);
+      console.log('✅ Default products initialized successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error initializing default products:', error);
+  }
+}
+
+// Call initialization function
+initializeDefaultProducts();
 
 // Security middleware
 app.use(
@@ -92,73 +182,6 @@ app.use('/uploads', express.static('uploads'));
 
 // Load admin users from admins.json
 const adminUsers = require('./admins.json');
-
-// In-memory data storage
-// NOTE: In production, use a real database (e.g., MongoDB, PostgreSQL) instead of in-memory arrays.
-let users = [];
-let products = [
-  {
-    id: "1",
-    name: "iPhone 15 Pro",
-    price: "₦1,200,000",
-    image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=300&h=200&fit=crop",
-    description: "Latest iPhone with advanced features",
-    category: "Smartphones",
-    stock: 15,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "2",
-    name: "Samsung Galaxy S24",
-    price: "₦950,000",
-    image: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=300&h=200&fit=crop",
-    description: "Premium Android smartphone",
-    category: "Smartphones",
-    stock: 12,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "3",
-    name: "MacBook Pro M3",
-    price: "₦2,500,000",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=300&h=200&fit=crop",
-    description: "Powerful laptop for professionals",
-    category: "Laptops",
-    stock: 8,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "4",
-    name: "iPad Air",
-    price: "₦850,000",
-    image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=300&h=200&fit=crop",
-    description: "Versatile tablet for work and play",
-    category: "Tablets",
-    stock: 20,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "5",
-    name: "AirPods Pro",
-    price: "₦350,000",
-    image: "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=300&h=200&fit=crop",
-    description: "Wireless earbuds with noise cancellation",
-    category: "Accessories",
-    stock: 30,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "6",
-    name: "Apple Watch Series 9",
-    price: "₦450,000",
-    image: "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=300&h=200&fit=crop",
-    description: "Smartwatch with health monitoring",
-    category: "Wearables",
-    stock: 18,
-    createdAt: new Date().toISOString()
-  }
-];
-let orders = [];
 
 // Email configuration (using Gmail SMTP)
 const transporter = nodemailer.createTransport({
@@ -266,14 +289,13 @@ app.post('/api/auth/register', async (req, res) => {
       console.log('Missing fields:', { name: !!name, email: !!email, password: !!password, phone: !!phone, state: !!state, area: !!area, street: !!street, address: !!address });
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
-    const existingUser = users.find(u => u.email === email);
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const newUser = {
-      id: uuidv4(),
+    const newUser = new User({
       name,
       email,
       password: hashedPassword,
@@ -285,8 +307,8 @@ app.post('/api/auth/register', async (req, res) => {
       isVerified: false,
       verificationCode,
       createdAt: new Date().toISOString()
-    };
-    users.push(newUser);
+    });
+    await newUser.save();
     const mailOptions = {
       from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
       to: email,
@@ -313,7 +335,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Email Verification
-app.post('/api/auth/verify', (req, res) => {
+app.post('/api/auth/verify', async (req, res) => {
   try {
     console.log('Verification request body:', req.body);
     const { email, verificationCode } = req.body;
@@ -321,12 +343,13 @@ app.post('/api/auth/verify', (req, res) => {
       console.log('Missing verification fields:', { email: !!email, verificationCode: !!verificationCode });
       return res.status(400).json({ success: false, message: 'Email and verification code are required' });
     }
-    const user = users.find(u => u.email === email && u.verificationCode === verificationCode);
+    const user = await User.findOne({ email, verificationCode });
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid verification code' });
     }
     user.isVerified = true;
     user.verificationCode = null;
+    await user.save();
     res.json({ success: true, message: 'Email verified successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -334,7 +357,7 @@ app.post('/api/auth/verify', (req, res) => {
 });
 
 // User Login
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     console.log('Login request body:', req.body);
     const { email, password } = req.body;
@@ -342,7 +365,7 @@ app.post('/api/auth/login', (req, res) => {
       console.log('Missing login fields:', { email: !!email, password: !!password });
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
-    const user = users.find(u => u.email === email);
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ success: false, message: 'Invalid credentials' });
     }
@@ -354,7 +377,7 @@ app.post('/api/auth/login', (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid credentials' });
       }
       const token = jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
+        { id: user._id, email: user.email, name: user.name },
         JWT_SECRET,
         { expiresIn: '24h' }
       );
@@ -363,7 +386,7 @@ app.post('/api/auth/login', (req, res) => {
         message: 'Login successful',
         token: token,
         user: {
-          id: user.id,
+          id: user._id,
           name: user.name,
           email: user.email,
           phone: user.phone,
@@ -380,8 +403,9 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // Get all products
-app.get('/api/products', (req, res) => {
+app.get('/api/products', async (req, res) => {
   try {
+    const products = await Product.find();
     res.json({ success: true, data: products, count: products.length });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching products', error: error.message });
@@ -389,9 +413,9 @@ app.get('/api/products', (req, res) => {
 });
 
 // Get single product by ID
-app.get('/api/products/:id', (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
   try {
-    const product = products.find(p => p.id === req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
@@ -415,14 +439,13 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
 });
 
 // Create new product (Admin only)
-app.post('/api/products', authenticateAdmin, (req, res) => {
+app.post('/api/products', authenticateAdmin, async (req, res) => {
   try {
     const { name, price, description, category, stock, image } = req.body;
     if (!name || !price || !description || !category || !stock) {
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
-    const newProduct = {
-      id: uuidv4(),
+    const newProduct = new Product({
       name,
       price,
       image: image || 'https://via.placeholder.com/300x200?text=No+Image',
@@ -430,31 +453,29 @@ app.post('/api/products', authenticateAdmin, (req, res) => {
       category,
       stock: parseInt(stock),
       createdAt: new Date().toISOString()
-    };
-    products.push(newProduct);
-    res.json({ success: true, message: 'Product created successfully', productId: newProduct.id });
+    });
+    await newProduct.save();
+    res.json({ success: true, message: 'Product created successfully', productId: newProduct._id });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error creating product', error: error.message });
   }
 });
 
 // Update product (Admin only)
-app.put('/api/products/:id', authenticateAdmin, (req, res) => {
+app.put('/api/products/:id', authenticateAdmin, async (req, res) => {
   try {
     const { name, price, description, category, stock, image } = req.body;
-    const productIndex = products.findIndex(p => p.id === req.params.id);
-    if (productIndex === -1) {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
-    products[productIndex] = {
-      ...products[productIndex],
-      name,
-      price,
-      image: image || products[productIndex].image,
-      description,
-      category,
-      stock: parseInt(stock)
-    };
+    product.name = name;
+    product.price = price;
+    product.image = image || product.image;
+    product.description = description;
+    product.category = category;
+    product.stock = parseInt(stock);
+    await product.save();
     res.json({ success: true, message: 'Product updated successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error updating product', error: error.message });
@@ -462,13 +483,13 @@ app.put('/api/products/:id', authenticateAdmin, (req, res) => {
 });
 
 // Delete product (Admin only)
-app.delete('/api/products/:id', authenticateAdmin, (req, res) => {
+app.delete('/api/products/:id', authenticateAdmin, async (req, res) => {
   try {
-    const productIndex = products.findIndex(p => p.id === req.params.id);
-    if (productIndex === -1) {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
-    products.splice(productIndex, 1);
+    await Product.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error deleting product', error: error.message });
@@ -476,13 +497,13 @@ app.delete('/api/products/:id', authenticateAdmin, (req, res) => {
 });
 
 // Place order (Authenticated users only)
-app.post('/api/orders', authenticateToken, (req, res) => {
+app.post('/api/orders', authenticateToken, async (req, res) => {
   try {
     const { productId, quantity, deliveryOption, deliveryAddress, paymentMethod } = req.body;
     if (!productId || !quantity || !deliveryOption || !paymentMethod) {
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
-    const product = products.find(p => p.id === productId);
+    const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
@@ -491,8 +512,7 @@ app.post('/api/orders', authenticateToken, (req, res) => {
     }
     const price = parseFloat(product.price.replace(/[^\d.]/g, ''));
     const totalPrice = price * quantity;
-    const newOrder = {
-      id: uuidv4(),
+    const newOrder = new Order({
       userId: req.user.id,
       productId,
       quantity,
@@ -503,9 +523,10 @@ app.post('/api/orders', authenticateToken, (req, res) => {
       status: 'pending',
       adminNotes: '',
       createdAt: new Date().toISOString()
-    };
-    orders.push(newOrder);
+    });
+    await newOrder.save();
     product.stock -= quantity;
+    await product.save();
 
     // Notify all admins of new order
     const adminEmails = adminUsers.map(a => a.email).filter(Boolean);
@@ -517,10 +538,10 @@ app.post('/api/orders', authenticateToken, (req, res) => {
       const mailOptions = {
         from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
         to: adminEmails.join(','),
-        subject: `New Order Placed: #${newOrder.id}`,
+        subject: `New Order Placed: #${newOrder._id}`,
         html: `
           <h2>New Order Placed</h2>
-          <p>Order ID: ${newOrder.id}</p>
+          <p>Order ID: ${newOrder._id}</p>
           <p>User: ${req.user ? req.user.name : 'Unknown'}</p>
           <p>Product: ${product ? product.name : ''}</p>
           <p>Quantity: ${newOrder.quantity}</p>
@@ -556,83 +577,85 @@ app.post('/api/orders', authenticateToken, (req, res) => {
       console.log('No admin emails found! Admin users:', adminUsers);
     }
 
-    res.json({ success: true, message: 'Order placed successfully', orderId: newOrder.id });
+    res.json({ success: true, message: 'Order placed successfully', orderId: newOrder._id });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error placing order', error: error.message });
   }
 });
 
 // Get user orders
-app.get('/api/orders', authenticateToken, (req, res) => {
+app.get('/api/orders', authenticateToken, async (req, res) => {
   try {
-    const userOrders = orders
-      .filter(o => o.userId === req.user.id)
-      .map(order => {
-        const product = products.find(p => p.id === order.productId);
-        return {
-          ...order,
-          productName: product ? product.name : 'Unknown Product',
-          productImage: product ? product.image : '',
-          productPrice: product ? product.price : ''
-        };
-      })
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    res.json({ success: true, data: userOrders });
+    const userOrders = await Order.find({ userId: req.user.id })
+      .populate('productId')
+      .sort({ createdAt: -1 });
+    
+    const formattedOrders = userOrders.map(order => ({
+      ...order.toObject(),
+      productName: order.productId ? order.productId.name : 'Unknown Product',
+      productImage: order.productId ? order.productId.image : '',
+      productPrice: order.productId ? order.productId.price : ''
+    }));
+    
+    res.json({ success: true, data: formattedOrders });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching orders', error: error.message });
   }
 });
 
 // Get all orders (Admin only)
-app.get('/api/admin/orders', authenticateAdmin, (req, res) => {
+app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
   try {
-    const adminOrders = orders.map(order => {
-      const product = products.find(p => p.id === order.productId);
-      const user = users.find(u => u.id === order.userId);
-      return {
-        ...order,
-        productName: product ? product.name : 'Unknown Product',
-        productImage: product ? product.image : '',
-        userName: user ? user.name : 'Unknown User',
-        userEmail: user ? user.email : '',
-        userPhone: user ? user.phone : ''
-      };
-    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    res.json({ success: true, data: adminOrders });
+    const adminOrders = await Order.find()
+      .populate('userId')
+      .populate('productId')
+      .sort({ createdAt: -1 });
+    
+    const formattedOrders = adminOrders.map(order => ({
+      ...order.toObject(),
+      productName: order.productId ? order.productId.name : 'Unknown Product',
+      productImage: order.productId ? order.productId.image : '',
+      userName: order.userId ? order.userId.name : 'Unknown User',
+      userEmail: order.userId ? order.userId.email : '',
+      userPhone: order.userId ? order.userId.phone : ''
+    }));
+    
+    res.json({ success: true, data: formattedOrders });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error fetching orders', error: error.message });
   }
 });
 
 // Update order status (Admin only)
-app.put('/api/admin/orders/:id', authenticateAdmin, (req, res) => {
+app.put('/api/admin/orders/:id', authenticateAdmin, async (req, res) => {
   try {
     const { status, adminNotes } = req.body;
     if (!status) {
       return res.status(400).json({ success: false, message: 'Status is required' });
     }
-    const order = orders.find(o => o.id === req.params.id);
+    const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
     order.status = status;
     order.adminNotes = adminNotes || '';
+    await order.save();
 
     // Find the user for this order
-    const user = users.find(u => u.id === order.userId);
+    const user = await User.findById(order.userId);
     // Find the product for this order
-    const product = products.find(p => p.id === order.productId);
+    const product = await Product.findById(order.productId);
     const productName = product ? product.name : '';
     if (user && user.email) {
       // Send email notification
       const mailOptions = {
         from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
         to: user.email,
-        subject: `Your Order #${order.id} Status Update`,
+        subject: `Your Order #${order._id} Status Update`,
         html: `
           <h2>Order Update from ONGOD Gadget Shop</h2>
           <p>Hi ${user.name},</p>
-          <p>Your order <strong>#${order.id}</strong> status has been updated to: <strong>${order.status.toUpperCase()}</strong>.</p>
+          <p>Your order <strong>#${order._id}</strong> status has been updated to: <strong>${order.status.toUpperCase()}</strong>.</p>
           <p>Product: ${productName}</p>
           <p>Quantity: ${order.quantity}</p>
           <p>Total: ${order.totalPrice}</p>
@@ -655,10 +678,10 @@ app.put('/api/admin/orders/:id', authenticateAdmin, (req, res) => {
       const mailOptionsAdmin = {
         from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
         to: adminEmails.join(','),
-        subject: `Order #${order.id} Status Updated` ,
+        subject: `Order #${order._id} Status Updated` ,
         html: `
           <h2>Order Status Updated</h2>
-          <p>Order ID: ${order.id}</p>
+          <p>Order ID: ${order._id}</p>
           <p>User: ${user ? user.name : 'Unknown'}</p>
           <p>Product: ${productName}</p>
           <p>New Status: ${order.status.toUpperCase()}</p>
