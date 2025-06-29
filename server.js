@@ -62,6 +62,8 @@ app.use(cors({
       'http://127.0.0.1:5500', 
       'http://localhost:5501', 
       'http://127.0.0.1:5501',
+      'http://localhost:5502', 
+      'http://127.0.0.1:5502',
       'http://localhost:3002', 
       'http://127.0.0.1:3002',
       'https://ol43435.github.io', // GitHub Pages frontend
@@ -507,7 +509,11 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 
     // Notify all admins of new order
     const adminEmails = adminUsers.map(a => a.email).filter(Boolean);
+    console.log('Admin emails found:', adminEmails);
+    console.log('Admin users:', adminUsers);
+    
     if (adminEmails.length > 0) {
+      console.log('Attempting to send admin notification to:', adminEmails);
       const mailOptions = {
         from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
         to: adminEmails.join(','),
@@ -525,13 +531,29 @@ app.post('/api/orders', authenticateToken, (req, res) => {
           <p>Date: ${newOrder.createdAt}</p>
         `
       };
+      
+      console.log('Email configuration:', {
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject
+      });
+      
       transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
           console.log('Admin new order email error:', error);
+          console.log('Email error details:', {
+            code: error.code,
+            command: error.command,
+            response: error.response,
+            responseCode: error.responseCode
+          });
         } else {
-          console.log('Admin new order email sent:', info.response);
+          console.log('Admin new order email sent successfully:', info.response);
+          console.log('Message ID:', info.messageId);
         }
       });
+    } else {
+      console.log('No admin emails found! Admin users:', adminUsers);
     }
 
     res.json({ success: true, message: 'Order placed successfully', orderId: newOrder.id });
@@ -750,6 +772,64 @@ app.post('/api/admin/register', async (req, res) => {
         id: newAdmin.id,
         name: newAdmin.name,
         email: newAdmin.email
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Test email configuration endpoint
+app.post('/api/test-email', authenticateAdmin, (req, res) => {
+  try {
+    console.log('Testing email configuration...');
+    console.log('EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'Not set');
+    console.log('Admin users:', adminUsers);
+    
+    const adminEmails = adminUsers.map(a => a.email).filter(Boolean);
+    
+    if (adminEmails.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No admin emails found',
+        adminUsers: adminUsers 
+      });
+    }
+    
+    const testMailOptions = {
+      from: process.env.EMAIL_USER || 'ayomideoluniyi49@gmail.com',
+      to: adminEmails[0], // Send to first admin
+      subject: 'Test Email - ONGOD Gadget Shop',
+      html: `
+        <h2>Test Email</h2>
+        <p>This is a test email to verify the email configuration.</p>
+        <p>Time: ${new Date().toLocaleString()}</p>
+        <p>If you receive this, the email system is working correctly.</p>
+      `
+    };
+    
+    transporter.sendMail(testMailOptions, (error, info) => {
+      if (error) {
+        console.log('Test email error:', error);
+        res.status(500).json({ 
+          success: false, 
+          message: 'Email test failed', 
+          error: error.message,
+          details: {
+            code: error.code,
+            command: error.command,
+            response: error.response
+          }
+        });
+      } else {
+        console.log('Test email sent successfully:', info.response);
+        res.json({ 
+          success: true, 
+          message: 'Test email sent successfully',
+          messageId: info.messageId,
+          response: info.response
+        });
       }
     });
   } catch (error) {
