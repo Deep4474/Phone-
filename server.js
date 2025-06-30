@@ -6,21 +6,6 @@ require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 
-// --- Start Debugging ---
-try {
-    console.log('--- DEBUGGING DEPLOYMENT ---');
-    console.log(`Current working directory (cwd): ${process.cwd()}`);
-    console.log(`__dirname: ${__dirname}`);
-    const parentDir = path.resolve(__dirname, '..');
-    console.log(`Parent directory: ${parentDir}`);
-    console.log('Contents of parent directory:', fs.readdirSync(parentDir));
-    console.log('Contents of current directory:', fs.readdirSync(__dirname));
-    console.log('--- END DEBUGGING ---');
-} catch (e) {
-    console.error('Error during debug logging:', e);
-}
-// --- End Debugging ---
-
 const app = express();
 const PORT = process.env.PORT || 3001;
 
