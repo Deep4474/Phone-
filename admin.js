@@ -5,12 +5,12 @@ const bcrypt = require('bcrypt');
 const fs = require('fs');
 const path = require('path');
 const { body, validationResult } = require('express-validator');
-const { authenticateToken, isAdmin } = require('../middleware/auth');
+const { authenticateToken, isAdmin } = require('./authMiddleware');
 const { v4: uuidv4 } = require('uuid');
-const { orders, saveOrders } = require('../orders');
-const { products } = require('../products');
-const { users } = require('../users');
-const { notifications, saveNotifications } = require('../notifications');
+const { orders, saveOrders } = require('./orders');
+const { products } = require('./products');
+const { users } = require('./users');
+const { notifications, saveNotifications } = require('./notifications');
 
 const ADMIN_USERS_FILE = path.join(__dirname, '../admin-users.json');
 
