@@ -126,7 +126,7 @@
         <label for="quantity">Quantity:</label>
         <input type="number" id="quantity" min="1" value="1" onchange="updateTotal()" />
       </div>
-
+      
       <div class="form-group">
         <label for="buy-option">Choose Option:</label>
         <select id="buy-option" onchange="showMap()">
@@ -136,62 +136,13 @@
         </select>
       </div>
 
-      <div id="map-container" class="hidden">
-        <h3>Pickup/Delivery Location</h3>
-        
-        <!-- Search Box for Map -->
-        <div class="map-search-container">
-          <input 
-            type="text" 
-            id="map-search" 
-            placeholder="Search for address, area, or landmark..." 
-            class="map-search-input"
-          />
-          <button id="search-location-btn" class="map-search-btn">Search</button>
+      <div id="map-container" class="hidden" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid #eee; border-radius: 8px;">
+        <h3 style="margin-top: 0;">Pickup/Delivery Location</h3>
+        <div id="map" style="width: 100%; height: 300px; margin-bottom: 10px; background-color: #f9f9f9;">
+          <!-- Map will be loaded here -->
         </div>
-        
-        <div id="map" style="width: 100%; height: 300px; margin-bottom: 10px;"></div>
-        
-        <!-- Manual Address Section (shown when map is unavailable) -->
-        <div id="manual-address-section" class="hidden">
-          <div style="padding: 20px; text-align: center; background: #f5f5f5; border-radius: 8px; margin-bottom: 15px;">
-            <h4>Manual Address Entry</h4>
-            <p>Please enter your delivery address manually:</p>
-          </div>
-        </div>
-        
-        <!-- Address Display Section -->
-        <div id="address-display" class="address-display">
-          <div class="address-info">
-            <h4>Current Delivery Address:</h4>
-            <p><strong>State:</strong> <span id="current-state">Loading...</span></p>
-            <p><strong>Area:</strong> <span id="current-area">Loading...</span></p>
-            <p><strong>Street:</strong> <span id="current-street">Loading...</span></p>
-            <p><strong>Full Address:</strong> <span id="current-address">Loading...</span></p>
-          </div>
-        </div>
-        
-        <!-- Address Input Fields -->
-        <div class="address-fields">
-          <h4>Update Delivery Address (Optional)</h4>
-          <div class="form-group">
-            <label for="delivery-state">State:</label>
-            <input type="text" id="delivery-state" placeholder="State" />
-          </div>
-          <div class="form-group">
-            <label for="delivery-area">Area:</label>
-            <input type="text" id="delivery-area" placeholder="Area" />
-          </div>
-          <div class="form-group">
-            <label for="delivery-street">Street:</label>
-            <input type="text" id="delivery-street" placeholder="Street" />
-          </div>
-          <div class="form-group">
-            <label for="delivery-address">Full Address:</label>
-            <textarea id="delivery-address" placeholder="Full Address" rows="3"></textarea>
-          </div>
-          <button id="use-current-location-btn" class="btn-secondary" style="margin-bottom: 10px;">Use Current Location</button>
-          <button id="use-registered-address-btn" class="btn-secondary">Use Registered Address</button>
+        <div id="address-display">
+          <p><strong>Current Address:</strong> <span id="current-address"></span></p>
         </div>
       </div>
 
@@ -216,6 +167,7 @@
       </button>
       <button id="back-to-products-btn-2" class="btn-secondary">Back to Products</button>
     </section>
+
   </main>
 
   <script src="script.js"></script>
@@ -237,4 +189,5 @@
     }
   </style>
 </body>
+
 </html> 
