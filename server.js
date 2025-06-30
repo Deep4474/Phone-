@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -14,12 +15,12 @@ app.use(cors({
 }));
 
 // Import routes
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products');
-const orderRoutes = require('./routes/orders');
-const notificationRoutes = require('./routes/notifications');
-const adminRoutes = require('./routes/admin');
-const locationRoutes = require('./routes/location');
+const authRoutes = require(path.join(__dirname, 'routes', 'auth'));
+const productRoutes = require(path.join(__dirname, 'routes', 'products'));
+const orderRoutes = require(path.join(__dirname, 'routes', 'orders'));
+const notificationRoutes = require(path.join(__dirname, 'routes', 'notifications'));
+const adminRoutes = require(path.join(__dirname, 'routes', 'admin'));
+const locationRoutes = require(path.join(__dirname, 'routes', 'location'));
 
 // Security middleware
 app.use(
