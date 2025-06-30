@@ -1,335 +1,752 @@
-const express = require('express');
-const router = express.Router();
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const fs = require('fs');
-const path = require('path');
-const { orders, saveOrders } = require('../data/orders');
-const { products } = require('../data/products');
-const { users } = require('../data/users');
-const { notifications, saveNotifications } = require('../data/notifications');
+document.addEventListener('DOMContentLoaded', function() {
+// ONGOD Gadget Shop Admin - All-in-one Script
 
-const ADMIN_USERS_FILE = path.join(__dirname, '../admin-users.json');
+const API_BASE = '/api/admin';
+const API_PRODUCTS = '/api/products';
+const API_NOTIFICATIONS = '/api/notifications';
 
-// Helper to load admins from file
-function loadAdmins() {
+// --- DOM ELEMENTS FIRST ---
+const loginSection = document.getElementById('admin-login-section');
+const registerSection = document.getElementById('admin-register-section');
+const authContainer = document.getElementById('admin-auth-container');
+const dashboard = document.getElementById('admin-dashboard');
+const showRegister = document.getElementById('show-register');
+const showLogin = document.getElementById('show-login');
+const loginForm = document.getElementById('admin-login-form');
+const registerForm = document.getElementById('admin-register-form');
+const navItems = document.querySelectorAll('.admin-nav li[data-section]');
+const topbarTitle = document.getElementById('admin-topbar-title');
+const contentArea = document.getElementById('admin-content');
+const logoutBtn = document.getElementById('admin-logout');
+
+let currentProductList = [];
+let currentUserList = [];
+
+// Toggle forms
+if (showRegister) showRegister.onclick = (e) => {
+  e.preventDefault();
+  loginSection.classList.add('hidden');
+  registerSection.classList.remove('hidden');
+};
+if (showLogin) showLogin.onclick = (e) => {
+  e.preventDefault();
+  registerSection.classList.add('hidden');
+  loginSection.classList.remove('hidden');
+};
+
+// Login
+if (loginForm) loginForm.onsubmit = async function(e) {
+  e.preventDefault();
+  const email = document.getElementById('admin-login-email').value.trim();
+  const password = document.getElementById('admin-login-password').value;
+  const messageDiv = document.getElementById('admin-login-message');
+  messageDiv.textContent = '';
+  if (!email || !password) {
+    messageDiv.textContent = 'Please enter email and password.';
+    return;
+  }
   try {
-    const data = fs.readFileSync(ADMIN_USERS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (e) {
-    return [];
-  }
-}
-// Helper to save admins to file
-function saveAdmins(admins) {
-  fs.writeFileSync(ADMIN_USERS_FILE, JSON.stringify(admins, null, 2));
-}
-
-// Persistent admin users
-let adminUsers = loadAdmins();
-
-// Admin authentication middleware
-function authenticateAdmin(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'Admin access token required' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid admin token' });
+    const res = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      localStorage.setItem('adminToken', data.token);
+      localStorage.setItem('adminName', data.user.name);
+      showDashboard();
+    } else {
+      messageDiv.textContent = data.error || 'Login failed.';
     }
-    
-    // Check if user is actually an admin
-    const adminUser = adminUsers.find(admin => admin.id === user.userId);
-    if (!adminUser || adminUser.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+  } catch (err) {
+    messageDiv.textContent = 'Network error. Please try again.';
+  }
+};
+
+// Register
+if (registerForm) registerForm.onsubmit = async function(e) {
+  e.preventDefault();
+  const name = document.getElementById('admin-register-name').value.trim();
+  const email = document.getElementById('admin-register-email').value.trim();
+  const password = document.getElementById('admin-register-password').value;
+  const messageDiv = document.getElementById('admin-register-message');
+  messageDiv.textContent = '';
+  if (!name || !email || !password) {
+    messageDiv.textContent = 'Please fill in all fields.';
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      messageDiv.style.color = '#2563eb';
+      messageDiv.textContent = 'Registration successful! You can now login.';
+    } else {
+      messageDiv.style.color = '#dc2626';
+      messageDiv.textContent = data.error || 'Registration failed.';
     }
-    
-    req.admin = adminUser;
-    next();
+  } catch (err) {
+    messageDiv.style.color = '#dc2626';
+    messageDiv.textContent = 'Network error. Please try again.';
+  }
+};
+
+// Show dashboard if already logged in
+if (localStorage.getItem('adminToken')) {
+  showDashboard();
+}
+
+function showDashboard() {
+  if (authContainer) authContainer.classList.add('hidden');
+  if (dashboard) dashboard.classList.remove('hidden');
+  // Set admin name
+  const adminName = localStorage.getItem('adminName') || '';
+  const userSpan = document.getElementById('admin-logged-in-user');
+  if (userSpan) userSpan.textContent = adminName ? `Hello, ${adminName}` : '';
+  // Load default section
+  loadAdminSection('dashboard');
+}
+
+// Logout
+if (logoutBtn) logoutBtn.onclick = () => {
+  localStorage.removeItem('adminToken');
+  localStorage.removeItem('adminName');
+  if (dashboard) dashboard.classList.add('hidden');
+  if (authContainer) authContainer.classList.remove('hidden');
+  // Reset forms
+  loginForm?.reset();
+  registerForm?.reset();
+  document.getElementById('admin-login-message').textContent = '';
+  document.getElementById('admin-register-message').textContent = '';
+};
+
+// Navigation
+if (navItems && contentArea) {
+  navItems.forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelector('.admin-nav li.active')?.classList.remove('active');
+      item.classList.add('active');
+      const section = item.getAttribute('data-section');
+      topbarTitle.textContent = item.textContent;
+      loadAdminSection(section);
+    });
   });
 }
 
-// Admin login
-router.post('/login', async (req, res) => {
+function loadAdminSection(section) {
+  switch (section) {
+    case 'dashboard':
+      loadDashboardSection();
+      break;
+    case 'products':
+      loadProductsSection();
+      break;
+    case 'orders':
+      loadOrdersSection();
+      break;
+    case 'users':
+      loadUsersSection();
+      break;
+    case 'notifications':
+      loadNotificationsSection();
+      break;
+    case 'analytics':
+      loadAnalyticsSection();
+      break;
+    default:
+      contentArea.innerHTML = `<h2>Section not found</h2>`;
+  }
+}
+
+// --- DASHBOARD SECTION ---
+async function loadDashboardSection() {
+  contentArea.innerHTML = '<h2>Dashboard</h2><div>Loading...</div>';
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    // Find admin user
-    const adminUser = adminUsers.find(admin => admin.email === email);
-    if (!adminUser) {
-      return res.status(401).json({ error: 'Invalid admin credentials' });
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, adminUser.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid admin credentials' });
-    }
-
-    // Generate admin JWT token
-    const token = jwt.sign(
-      { 
-        userId: adminUser.id, 
-        email: adminUser.email, 
-        role: adminUser.role,
-        isAdmin: true 
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
-
-    // Remove password from response
-    const { password: _, ...adminResponse } = adminUser;
-
-    res.json({
-      success: true,
-      message: 'Admin login successful',
-      token,
-      user: adminResponse
+    const res = await fetch(`${API_BASE}/dashboard`, {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') }
     });
-
-  } catch (error) {
-    console.error('Admin login error:', error);
-    res.status(500).json({ error: 'Admin login failed' });
-  }
-});
-
-// Admin register endpoint
-router.post('/register', async (req, res) => {
-  try {
-    const { email, password, name } = req.body;
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: 'Email, password, and name are required' });
-    }
-    if (adminUsers.find(admin => admin.email === email)) {
-      return res.status(409).json({ error: 'Admin with this email already exists' });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newAdmin = {
-      id: Date.now().toString(),
-      email,
-      password: hashedPassword,
-      role: 'admin',
-      name
-    };
-    adminUsers.push(newAdmin);
-    saveAdmins(adminUsers);
-    res.status(201).json({ success: true, message: 'Admin registered successfully' });
-  } catch (error) {
-    console.error('Admin register error:', error);
-    res.status(500).json({ error: 'Admin registration failed' });
-  }
-});
-
-// Get admin profile
-router.get('/profile', authenticateAdmin, (req, res) => {
-  try {
-    const { password: _, ...adminResponse } = req.admin;
-    res.json({ admin: adminResponse });
-  } catch (error) {
-    console.error('Get admin profile error:', error);
-    res.status(500).json({ error: 'Failed to get admin profile' });
-  }
-});
-
-// Get all orders (admin)
-router.get('/orders', authenticateAdmin, (req, res) => {
-  try {
-    res.json({ orders });
-  } catch (error) {
-    console.error('Get admin orders error:', error);
-    res.status(500).json({ error: 'Failed to get orders' });
-  }
-});
-
-// Update order status (admin)
-router.put('/orders/:id/update', authenticateAdmin, (req, res) => {
-  try {
-    const { status, message } = req.body;
-    const order = orders.find(o => o._id === req.params.id);
-    
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-    
-    if (status) order.status = status;
-    if (message) order.adminMessage = message;
-    saveOrders(orders);
-    res.json({ success: true, order });
-  } catch (error) {
-    console.error('Update order error:', error);
-    res.status(500).json({ error: 'Failed to update order' });
-  }
-});
-
-// Get all users (admin)
-router.get('/users', authenticateAdmin, (req, res) => {
-  try {
-    // Import users from auth route (you might want to move this to a shared module)
-    const usersWithoutPassword = users.map(user => {
-      const { password, ...userResponse } = user;
-      return userResponse;
-    });
-    
-    res.json({ users: usersWithoutPassword });
-  } catch (error) {
-    console.error('Get users error:', error);
-    res.status(500).json({ error: 'Failed to get users' });
-  }
-});
-
-// Send notification to user (admin)
-router.post('/notifications/send', authenticateAdmin, (req, res) => {
-  try {
-    const { userId, message, type } = req.body;
-    
-    if (!userId || !message) {
-      return res.status(400).json({ error: 'userId and message required' });
-    }
-    
-    const notif = {
-      _id: Date.now().toString(),
-      userId,
-      message,
-      type: type || 'admin',
-      read: false,
-      createdAt: new Date().toISOString()
-    };
-    
-    notifications.push(notif);
-    saveNotifications(notifications);
-    res.status(201).json({ success: true, notification: notif });
-  } catch (error) {
-    console.error('Send notification error:', error);
-    res.status(500).json({ error: 'Failed to send notification' });
-  }
-});
-
-// Send email to user (admin) - mock
-router.post('/email/send', authenticateAdmin, (req, res) => {
-  try {
-    const { userId, subject, message } = req.body;
-    
-    if (!userId || !subject || !message) {
-      return res.status(400).json({ error: 'userId, subject, and message required' });
-    }
-    
-    // In production, send email using nodemailer
-    res.json({ success: true, info: `Email sent to user ${userId} (mock)` });
-  } catch (error) {
-    console.error('Send email error:', error);
-    res.status(500).json({ error: 'Failed to send email' });
-  }
-});
-
-// Get admin dashboard stats
-router.get('/dashboard', authenticateAdmin, (req, res) => {
-  try {
-    const stats = {
-      totalOrders: orders.length,
-      totalProducts: products.length,
-      totalUsers: users.length,
-      totalRevenue: orders
-        .filter(order => order.status === 'delivered')
-        .reduce((sum, order) => sum + order.totalAmount, 0),
-      recentOrders: orders
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5)
-    };
-    
-    res.json({ stats });
-  } catch (error) {
-    console.error('Get dashboard stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
-  }
-});
-
-// Get analytics data
-router.get('/analytics', authenticateAdmin, (req, res) => {
-  try {
-    // 1. Sales over time (last 30 days)
-    const salesByDay = {};
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    orders
-      .filter(o => new Date(o.createdAt) >= thirtyDaysAgo && o.status === 'delivered')
-      .forEach(o => {
-        const date = new Date(o.createdAt).toISOString().split('T')[0];
-        salesByDay[date] = (salesByDay[date] || 0) + o.totalAmount;
-      });
-    
-    const salesData = Object.entries(salesByDay)
-      .map(([date, sales]) => ({ date, sales }))
-      .sort((a,b) => new Date(a.date) - new Date(b.date));
-
-    // 2. Top selling products
-    const productSales = {};
-    orders.filter(o => o.status === 'delivered').forEach(o => {
-      if (o.productId) {
-          productSales[o.productId] = (productSales[o.productId] || 0) + o.quantity;
+    const { stats } = await res.json();
+    let html = `<h2>Dashboard</h2><div class="dashboard-stats">
+      <div class="stat"><span>Total Orders</span><b>${stats.totalOrders}</b></div>
+      <div class="stat"><span>Total Products</span><b>${stats.totalProducts}</b></div>
+      <div class="stat"><span>Total Users</span><b>${stats.totalUsers}</b></div>
+      <div class="stat"><span>Total Revenue</span><b>₦${stats.totalRevenue}</b></div>
+    </div>`;
+    html += `<h3 style="margin-top:2rem;">Recent Orders</h3>`;
+    if (stats.recentOrders && stats.recentOrders.length) {
+      html += `<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>ID</th><th>User</th><th>Total</th><th>Status</th><th>Date</th></tr></thead><tbody>`;
+      for (const order of stats.recentOrders) {
+        html += `<tr><td>${order._id}</td><td>${order.userId}</td><td>₦${order.totalAmount}</td><td>${order.status}</td><td>${new Date(order.createdAt).toLocaleString()}</td></tr>`;
       }
-    });
-
-    const topProducts = Object.entries(productSales)
-      .sort(([, qtyA], [, qtyB]) => qtyB - qtyA)
-      .slice(0, 5)
-      .map(([productId, quantitySold]) => {
-        const product = products.find(p => p._id === productId);
-        return {
-          name: product ? product.name : `Product ID: ${productId}`,
-          quantitySold
-        };
-      });
-    
-    // 3. Order status distribution
-    const orderStatusCounts = orders.reduce((acc, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1;
-      return acc;
-    }, {});
-
-    // 4. User registration trends (last 30 days)
-    const usersByDay = {};
-      users
-      .filter(u => u.createdAt && new Date(u.createdAt) >= thirtyDaysAgo)
-      .forEach(u => {
-        const date = new Date(u.createdAt).toISOString().split('T')[0];
-        usersByDay[date] = (usersByDay[date] || 0) + 1;
-      });
-    
-    const userSignupsData = Object.entries(usersByDay)
-      .map(([date, count]) => ({ date, count }))
-      .sort((a,b) => new Date(a.date) - new Date(b.date));
-
-    res.json({
-      salesData,
-      topProducts,
-      orderStatusCounts,
-      userSignupsData
-    });
-
-  } catch (error) {
-    console.error('Analytics error:', error);
-    res.status(500).json({ error: 'Failed to fetch analytics data' });
+      html += '</tbody></table></div>';
+    } else {
+      html += '<p>No recent orders.</p>';
+    }
+    contentArea.innerHTML = html;
+  } catch (err) {
+    contentArea.innerHTML = `<h2>Dashboard</h2><p style="color:#dc2626;">${err.message}</p>`;
   }
-});
+}
 
-// Admin logout
-router.post('/logout', authenticateAdmin, (req, res) => {
+// --- PRODUCTS SECTION ---
+async function loadProductsSection() {
+    contentArea.innerHTML = `
+    <h2>Products</h2>
+    <div class="product-controls">
+        <input type="search" id="product-search" placeholder="Search by name, category..." class="admin-search-input">
+        <button class="btn-primary" id="show-add-product">Add Product</button>
+    </div>
+    <div id="product-table-container">Loading...</div>`;
+
+    document.getElementById('show-add-product').onclick = showAddProductForm;
+    
+    const searchInput = document.getElementById('product-search');
+    searchInput.addEventListener('input', () => {
+        const searchTerm = searchInput.value.toLowerCase();
+        const filteredProducts = currentProductList.filter(p => 
+            (p.name && p.name.toLowerCase().includes(searchTerm)) ||
+            (p.category && p.category.toLowerCase().includes(searchTerm))
+        );
+        renderProductsTable(filteredProducts);
+    });
+    
+    contentArea.onclick = function(e) {
+        const target = e.target;
+        if (target.matches('.btn-edit')) {
+            const productId = target.closest('tr').dataset.productId;
+            const product = currentProductList.find(p => p._id === productId);
+            if (product) showEditProductForm(product);
+        } else if (target.matches('.btn-delete')) {
+            const productId = target.closest('tr').dataset.productId;
+            if (productId) deleteProduct(productId);
+        }
+    };
+
+    try {
+        const res = await fetch(API_PRODUCTS);
+        const data = await res.json();
+        currentProductList = data.products || [];
+        renderProductsTable(currentProductList);
+    } catch (err) {
+        const container = document.getElementById('product-table-container');
+        if (container) container.innerHTML = `<p style="color:#dc2626;">Failed to load products: ${err.message}</p>`;
+    }
+}
+
+function renderProductsTable(products) {
+    const container = document.getElementById('product-table-container');
+    if (!container) return;
+
+    let html = '';
+    if (!products || !products.length) {
+        html = '<p>No products match your search.</p>';
+    } else {
+        html += `<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Image</th><th>Name</th><th>Price</th><th>Category</th><th>Stock</th><th>Actions</th></tr></thead><tbody>`;
+        for (const p of products) {
+            const imgUrl = (p.images && p.images.length) ? p.images[0] : '';
+            const fallbackImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24' fill='none' stroke='%23e5e7eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
+            const finalImgSrc = imgUrl || fallbackImg;
+            html += `<tr data-product-id="${p._id}">
+                <td><img src="${finalImgSrc}" alt="Product Image" style="width:48px;height:48px;object-fit:cover;border-radius:6px;" onerror="this.onerror=null;this.src='${fallbackImg}'" /></td>
+                <td>${p.name}</td>
+                <td>₦${p.price}</td>
+                <td>${p.category}</td>
+                <td>${p.stock}</td>
+                <td class="product-actions">
+                    <button class="btn-edit">Edit</button>
+                    <button class="btn-delete">Delete</button>
+                </td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+    }
+    container.innerHTML = html;
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Are you sure you want to delete this product?')) {
+        return;
+    }
+    try {
+        const res = await fetch(`${API_PRODUCTS}/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') }
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to delete product.');
+        }
+        currentProductList = currentProductList.filter(p => p._id !== id);
+        renderProductsTable(currentProductList);
+    } catch (err) {
+        alert(`Error: ${err.message}`);
+    }
+}
+
+function showEditProductForm(product) {
+  contentArea.innerHTML = `<h2>Edit Product</h2>
+    <form id="edit-product-form" class="admin-form">
+      <input type="hidden" id="prod-id" value="${product._id}">
+      <div class="form-group"><label>Name</label><input type="text" id="prod-name" value="${product.name}" required></div>
+      <div class="form-group"><label>Price</label><input type="number" id="prod-price" value="${product.price}" required></div>
+      <div class="form-group"><label>Description</label><textarea id="prod-desc" required>${product.description}</textarea></div>
+      <div class="form-group"><label>Category</label><input type="text" id="prod-cat" value="${product.category}" required></div>
+      <div class="form-group"><label>Brand</label><input type="text" id="prod-brand" value="${product.brand}" required></div>
+      <div class="form-group"><label>Stock</label><input type="number" id="prod-stock" value="${product.stock}" required></div>
+      <div class="form-group"><label>Image URL (comma separated)</label><input type="text" id="prod-imgs" value="${(product.images || []).join(', ')}"></div>
+      <button type="submit" class="btn-primary">Save Changes</button>
+      <button type="button" class="btn-secondary" id="cancel-edit-product">Cancel</button>
+      <div id="edit-product-message" class="form-message"></div>
+    </form>`;
+    
+  document.getElementById('cancel-edit-product').onclick = loadProductsSection;
+  document.getElementById('edit-product-form').onsubmit = async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('prod-id').value;
+    const updatedData = {
+        name: document.getElementById('prod-name').value.trim(),
+        price: document.getElementById('prod-price').value,
+        description: document.getElementById('prod-desc').value.trim(),
+        category: document.getElementById('prod-cat').value.trim(),
+        brand: document.getElementById('prod-brand').value.trim(),
+        stock: document.getElementById('prod-stock').value,
+        images: document.getElementById('prod-imgs').value.split(',').map(s => s.trim()).filter(Boolean)
+    };
+    
+    const messageDiv = document.getElementById('edit-product-message');
+    messageDiv.textContent = '';
+
+    try {
+      const res = await fetch(`${API_PRODUCTS}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('adminToken')
+        },
+        body: JSON.stringify(updatedData)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        messageDiv.style.color = 'var(--success-color)';
+        messageDiv.textContent = 'Product updated!';
+        setTimeout(loadProductsSection, 1200);
+      } else {
+        messageDiv.style.color = 'var(--danger-color)';
+        messageDiv.textContent = data.error || 'Failed to update product.';
+      }
+    } catch (err) {
+      messageDiv.style.color = 'var(--danger-color)';
+      messageDiv.textContent = 'Network error.';
+    }
+  };
+}
+
+function showAddProductForm() {
+  contentArea.innerHTML = `<h2>Add Product</h2>
+    <form id="add-product-form" class="admin-form">
+      <div class="form-group"><label>Name</label><input type="text" id="prod-name" required></div>
+      <div class="form-group"><label>Price</label><input type="number" id="prod-price" required></div>
+      <div class="form-group"><label>Description</label><textarea id="prod-desc" required></textarea></div>
+      <div class="form-group"><label>Category</label><input type="text" id="prod-cat" required></div>
+      <div class="form-group"><label>Brand</label><input type="text" id="prod-brand" required></div>
+      <div class="form-group"><label>Stock</label><input type="number" id="prod-stock" required></div>
+      <div class="form-group"><label>Image URL (comma separated)</label><input type="text" id="prod-imgs"></div>
+      <button type="submit" class="btn-primary">Add Product</button>
+      <button type="button" class="btn-secondary" id="cancel-add-product">Cancel</button>
+      <div id="add-product-message" class="form-message"></div>
+    </form>`;
+  document.getElementById('cancel-add-product').onclick = loadProductsSection;
+  document.getElementById('add-product-form').onsubmit = async function(e) {
+    e.preventDefault();
+    const name = document.getElementById('prod-name').value.trim();
+    const price = document.getElementById('prod-price').value;
+    const description = document.getElementById('prod-desc').value.trim();
+    const category = document.getElementById('prod-cat').value.trim();
+    const brand = document.getElementById('prod-brand').value.trim();
+    const stock = document.getElementById('prod-stock').value;
+    const images = document.getElementById('prod-imgs').value.split(',').map(s => s.trim()).filter(Boolean);
+    const messageDiv = document.getElementById('add-product-message');
+    messageDiv.textContent = '';
+    try {
+      const res = await fetch(API_PRODUCTS, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('adminToken')
+        },
+        body: JSON.stringify({ name, price, description, category, brand, stock, images })
+      });
+      const data = await res.json();
+      if (res.ok && data.product) {
+        messageDiv.style.color = '#2563eb';
+        messageDiv.textContent = 'Product added!';
+        setTimeout(loadProductsSection, 1200);
+      } else {
+        messageDiv.style.color = '#dc2626';
+        messageDiv.textContent = data.error || 'Failed to add product.';
+      }
+    } catch (err) {
+      messageDiv.style.color = '#dc2626';
+      messageDiv.textContent = 'Network error.';
+    }
+  };
+}
+
+// --- USERS SECTION ---
+async function loadUsersSection() {
+  contentArea.innerHTML = '<h2>Users</h2><div>Loading...</div>';
+  contentArea.onclick = null; // Clear product section listeners
   try {
-    res.json({ message: 'Admin logged out successfully' });
-  } catch (error) {
-    console.error('Admin logout error:', error);
-    res.status(500).json({ error: 'Admin logout failed' });
-  }
-});
+    const res = await fetch(`${API_BASE}/users`, {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') }
+    });
+    const data = await res.json();
+    currentUserList = data.users || [];
+    
+    let html = `<h2>Users</h2>`;
+    if (!currentUserList.length) {
+      html += '<p>No users found.</p>';
+    } else {
+      html += `<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead><tbody>`;
+      for (const u of currentUserList) {
+        html += `<tr data-user-id="${u.id}">
+          <td>${u.id}</td>
+          <td>${u.name}</td>
+          <td>${u.email}</td>
+          <td>${u.role}</td>
+          <td><button class="btn-primary view-user-btn" style="width: auto; display: inline-block; padding: 0.4rem 0.8rem; font-size: 0.875rem;">View</button></td>
+        </tr>`;
+      }
+      html += '</tbody></table></div>';
+    }
+    contentArea.innerHTML = html;
 
-module.exports = router; 
+    // Add event listeners for view buttons
+    document.querySelectorAll('.view-user-btn').forEach(btn => {
+      btn.onclick = function() {
+        const userId = this.closest('tr').getAttribute('data-user-id');
+        const user = currentUserList.find(u => u.id === userId);
+        if (user) {
+            showUserModal(user);
+        }
+      };
+    });
+  } catch (err) {
+    contentArea.innerHTML = `<h2>Users</h2><p style="color:#dc2626;">${err.message}</p>`;
+  }
+}
+
+function showUserModal(user) {
+  // Create modal backdrop
+  const modalBackdrop = document.createElement('div');
+  modalBackdrop.className = 'modal-backdrop';
+
+  // Create modal content
+  const address = user.address || 'No address provided';
+  const mapSrc = address !== 'No address provided'
+    ? `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`
+    : '';
+
+  modalBackdrop.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>User Details</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="user-details-grid">
+          <div class="user-detail"><strong>Name:</strong> ${user.name}</div>
+          <div class="user-detail"><strong>Email:</strong> ${user.email}</div>
+          <div class="user-detail"><strong>Phone:</strong> ${user.phone || 'N/A'}</div>
+          <div class="user-detail"><strong>Role:</strong> ${user.role}</div>
+          <div class="user-detail" style="grid-column: 1 / -1;"><strong>Address:</strong> ${address}</div>
+        </div>
+        <h4>User Location</h4>
+        ${mapSrc ? `<iframe class="user-map" src="${mapSrc}" loading="lazy"></iframe>` : '<p>Map not available because no address was provided.</p>'}
+      </div>
+    </div>
+  `;
+
+  // Append to body
+  document.body.appendChild(modalBackdrop);
+
+  // Show modal with transition
+  setTimeout(() => modalBackdrop.classList.add('show'), 10);
+
+  // Close functionality
+  const closeModal = () => {
+    modalBackdrop.classList.remove('show');
+    modalBackdrop.addEventListener('transitionend', () => modalBackdrop.remove());
+  };
+
+  modalBackdrop.querySelector('.modal-close').onclick = closeModal;
+  modalBackdrop.addEventListener('click', (e) => {
+    if (e.target === modalBackdrop) {
+      closeModal();
+    }
+  });
+}
+
+// --- NOTIFICATIONS SECTION ---
+async function loadNotificationsSection() {
+  contentArea.innerHTML = '<h2>Notifications</h2><div>Loading...</div>';
+  contentArea.onclick = null; // Clear product section listeners
+  try {
+    const res = await fetch(API_NOTIFICATIONS, {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') }
+    });
+    const data = await res.json();
+    let html = `<h2>Notifications</h2><button class="btn-primary" id="show-send-notif" style="float:right;margin-bottom:1rem;">Send Notification</button>`;
+    if (!data.notifications.length) {
+      html += '<p>No notifications found.</p>';
+    } else {
+      html += `<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>ID</th><th>User</th><th>Message</th><th>Type</th><th>Read</th><th>Date</th></tr></thead><tbody>`;
+      for (const n of data.notifications) {
+        html += `<tr><td>${n._id}</td><td>${n.userId}</td><td>${n.message}</td><td>${n.type}</td><td>${n.read ? 'Yes' : 'No'}</td><td>${new Date(n.createdAt).toLocaleString()}</td></tr>`;
+      }
+      html += '</tbody></table></div>';
+    }
+    contentArea.innerHTML = html;
+    document.getElementById('show-send-notif').onclick = showSendNotifForm;
+  } catch (err) {
+    contentArea.innerHTML = `<h2>Notifications</h2><p style="color:#dc2626;">${err.message}</p>`;
+  }
+}
+function showSendNotifForm() {
+  contentArea.innerHTML = `<h2>Send Notification</h2>
+    <form id="send-notif-form" class="admin-form">
+      <div class="form-group"><label>User ID</label><input type="text" id="notif-user-id" required></div>
+      <div class="form-group"><label>Message</label><textarea id="notif-message" required></textarea></div>
+      <div class="form-group"><label>Type</label><input type="text" id="notif-type" placeholder="order_update/admin"></div>
+      <button type="submit" class="btn-primary">Send</button>
+      <button type="button" class="btn-secondary" id="cancel-send-notif">Cancel</button>
+      <div id="send-notif-message" class="form-message"></div>
+    </form>`;
+  document.getElementById('cancel-send-notif').onclick = loadNotificationsSection;
+  document.getElementById('send-notif-form').onsubmit = async function(e) {
+    e.preventDefault();
+    const userId = document.getElementById('notif-user-id').value.trim();
+    const message = document.getElementById('notif-message').value.trim();
+    const type = document.getElementById('notif-type').value.trim();
+    const messageDiv = document.getElementById('send-notif-message');
+    messageDiv.textContent = '';
+    try {
+      const res = await fetch(`${API_BASE}/notifications/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('adminToken')
+        },
+        body: JSON.stringify({ userId, message, type })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        messageDiv.style.color = '#2563eb';
+        messageDiv.textContent = 'Notification sent!';
+        setTimeout(loadNotificationsSection, 1200);
+      } else {
+        messageDiv.style.color = '#dc2626';
+        messageDiv.textContent = data.error || 'Failed to send notification.';
+      }
+    } catch (err) {
+      messageDiv.style.color = '#dc2626';
+      messageDiv.textContent = 'Network error.';
+    }
+  };
+}
+
+// --- ORDERS SECTION ---
+async function loadOrdersSection() {
+  contentArea.innerHTML = '<h2>Orders</h2><div id="orders-loading">Loading orders...</div>';
+  contentArea.onclick = null; // Clear product section listeners
+  try {
+    const res = await fetch(`${API_BASE}/orders`, {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch orders');
+    if (!data.orders.length) {
+      contentArea.innerHTML = '<h2>Orders</h2><p>No orders found.</p>';
+      return;
+    }
+    let html = `<h2>Orders</h2><div class="orders-list">`;
+    html += `<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>ID</th><th>User</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Date</th><th>Action</th></tr></thead><tbody>`;
+    for (const order of data.orders) {
+      html += `<tr>
+        <td>${order._id}</td>
+        <td>${order.userId}</td>
+        <td>${order.productId}</td>
+        <td>${order.quantity}</td>
+        <td>₦${order.totalAmount}</td>
+        <td>
+          <select class="order-status" data-id="${order._id}">
+            <option value="pending"${order.status==='pending'?' selected':''}>Pending</option>
+            <option value="confirmed"${order.status==='confirmed'?' selected':''}>Confirmed</option>
+            <option value="delivered"${order.status==='delivered'?' selected':''}>Delivered</option>
+            <option value="rejected"${order.status==='rejected'?' selected':''}>Rejected</option>
+          </select>
+        </td>
+        <td>${new Date(order.createdAt).toLocaleString()}</td>
+        <td><button class="btn-primary btn-update-status" data-id="${order._id}">Update</button></td>
+      </tr>`;
+    }
+    html += '</tbody></table></div></div>';
+    contentArea.innerHTML = html;
+    // Add event listeners for update buttons
+    document.querySelectorAll('.btn-update-status').forEach(btn => {
+      btn.onclick = async function() {
+        const id = btn.getAttribute('data-id');
+        const status = document.querySelector(`select.order-status[data-id='${id}']`).value;
+        btn.textContent = '...';
+        btn.disabled = true;
+        try {
+          const res = await fetch(`${API_BASE}/orders/${id}/update`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + localStorage.getItem('adminToken')
+            },
+            body: JSON.stringify({ status })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to update');
+          btn.textContent = 'Updated!';
+          setTimeout(() => { btn.textContent = 'Update'; btn.disabled = false; }, 1200);
+        } catch (err) {
+          btn.textContent = 'Error';
+          setTimeout(() => { btn.textContent = 'Update'; btn.disabled = false; }, 1200);
+        }
+      };
+    });
+  } catch (err) {
+    contentArea.innerHTML = `<h2>Orders</h2><p style="color:#dc2626;">${err.message}</p>`;
+  }
+}
+
+// --- ANALYTICS SECTION ---
+async function loadAnalyticsSection() {
+  contentArea.innerHTML = '<h2>Analytics</h2><div>Loading charts...</div>';
+  contentArea.onclick = null; // Clear product section listeners
+  try {
+    const res = await fetch(`${API_BASE}/analytics`, {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch analytics');
+
+    let html = `<h2>Analytics</h2>`;
+    html += `<div class="analytics-grid">
+        <div class="chart-container">
+            <h3>Sales Over Time (Last 30 Days)</h3>
+            <canvas id="salesChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Order Status</h3>
+            <canvas id="orderStatusChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>User Registrations (Last 30 Days)</h3>
+            <canvas id="userSignupsChart"></canvas>
+        </div>
+        <div class="data-container">
+              <h3>Top 5 Selling Products</h3>
+              <ul id="topProductsList"></ul>
+        </div>
+    </div>`;
+
+    contentArea.innerHTML = html;
+    
+    // Render charts
+    renderSalesChart(data.salesData);
+    renderOrderStatusChart(data.orderStatusCounts);
+    renderUserSignupsChart(data.userSignupsData);
+
+    // Render top products list
+    const topProductsList = document.getElementById('topProductsList');
+    if (data.topProducts && data.topProducts.length > 0) {
+      topProductsList.innerHTML = data.topProducts
+        .map(p => `<li>${p.name} <span>(${p.quantitySold} sold)</span></li>`)
+        .join('');
+    } else {
+      topProductsList.innerHTML = '<li>No sales data available.</li>';
+    }
+
+  } catch (err) {
+    contentArea.innerHTML = `<h2>Analytics</h2><p style="color:#dc2626;">${err.message}</p>`;
+  }
+}
+
+function renderSalesChart(salesData) {
+  const ctx = document.getElementById('salesChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: salesData.map(d => d.date),
+      datasets: [{
+        label: 'Total Sales (₦)',
+        data: salesData.map(d => d.sales),
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+        fill: true,
+        tension: 0.1
+      }]
+    }
+  });
+}
+
+function renderOrderStatusChart(orderStatusCounts) {
+  const ctx = document.getElementById('orderStatusChart').getContext('2d');
+  const labels = Object.keys(orderStatusCounts);
+  const data = Object.values(orderStatusCounts);
+  
+  // Consistent colors for statuses
+  const colorMap = {
+    pending: '#f59e0b',
+    confirmed: '#3b82f6',
+    delivered: '#10b981',
+    rejected: '#ef4444',
+  };
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Order Status',
+        data: data,
+        backgroundColor: labels.map(label => colorMap[label] || '#6b7280'),
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+    }
+  });
+}
+
+function renderUserSignupsChart(userSignupsData) {
+  const ctx = document.getElementById('userSignupsChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: userSignupsData.map(d => d.date),
+      datasets: [{
+        label: 'New Users',
+        data: userSignupsData.map(d => d.count),
+        backgroundColor: '#8b5cf6',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+    }
+  });
+}
+
+// --- END OF ALL CODE ---
+});

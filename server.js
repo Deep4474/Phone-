@@ -31,12 +31,12 @@ app.use(cors({
 }));
 
 // Import routes
-const authRoutes = require(path.join(__dirname, '..', 'routes', 'auth'));
-const productRoutes = require(path.join(__dirname, '..', 'routes', 'products'));
-const orderRoutes = require(path.join(__dirname, '..', 'routes', 'orders'));
-const notificationRoutes = require(path.join(__dirname, '..', 'routes', 'notifications'));
-const adminRoutes = require(path.join(__dirname, '..', 'routes', 'admin'));
-const locationRoutes = require(path.join(__dirname, '..', 'routes', 'location'));
+const authRoutes = require('./auth');
+const productRoutes = require('./products');
+const orderRoutes = require('./orders');
+const notificationRoutes = require('./notifications');
+const adminRoutes = require('./admin');
+const locationRoutes = require('./location');
 
 // Security middleware
 app.use(
@@ -63,10 +63,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Static files
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads', express.static('uploads'));
 
 // Serve admin static files (only accessible via direct URL)
-app.use('/admin', express.static(path.join(__dirname, '..', 'admin')));
+app.use('/admin', express.static(__dirname));
 
 // API Routes
 app.use('/api/auth', authRoutes);
